@@ -1,0 +1,19 @@
+100 100
+45 61
+n 5 n n
+3
+-5 -6 111 113 0 2 255 255 255
+13 13 9 32 0 2 0 255 255
+15 30 17 15 0 2 0 255 255
+0
+
+//file format:
+
+mapWidth mapHeight
+spawnPointX spawnPointY
+numberOfRectanglesToReadFromTheFile
+topLeftCornerX topLeftCornerY width height collision climbable r g b //each of these lines represents one rectangle
+
+//collision can be: 0 (no collision, draw behind char), 1 (collision), 2 (no collision, draw in front of char)
+//climbable can be: 0 (can't climb), 1 (can climb, no gravity applies), or 3 (can climb, slow gravity applies)
+
