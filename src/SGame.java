@@ -19,13 +19,17 @@ import javax.swing.Timer;
  * 		new climbability value (jumpable climb), improved collision
  * 		and climbability checking system, implemented warps to maps of 
  *		different dimensions
+ * 1.3  improved key press processing (multiple directions at once,
+ * 		movement speed no longer dependent on computer's key repeat 
+ * 		delay), improved normWarp file format ('n' now specifies 
+ *		that destination is same as current map)
  *
- * @version Version 1.2, Wednesday, March 29, 2017
+ * @version Version 1.3, Tuesday, April 11, 2017
  * @author Adam Cogen
  *
  */
 public class SGame implements Observer {
-	private int map = 4; //current map number
+	private int map = 19; //current map number
 	private SFileRead sFile; //the class that will read data stored in map files
 	private SMap sMap; //the class that will store map data 
 	private SGamePanel sPanel; //the class that will display the game and sense key presses
@@ -46,6 +50,16 @@ public class SGame implements Observer {
 	private int rightCollisionOffset = 8; //used to fix the discrepancy between the player's x position and its right side, for collision etc.
 	private int upCollisionOffset = -22; //used to fix the discrepancy between the player's y position and its top, for collision etc.
 	private int downCollisionOffset = -1; //used to fix the discrepancy between the player's y position and its bottom, for collision etc.
+	private boolean moving = false; //is the player moving? true when arrow key(s) being pressed
+	private Timer moveTimer; //timer to move the player while arrow key(s) being pressed
+	private int[] keyArray; //an array that holds data about which keys are currently being pressed
+	//private boolean moveExecuted = true; //after a key was pressed, has the player moved? if so, make false. if not, remains true.
+	private boolean initLeft = false; //when left arrow is pressed, character moves left immediately one time without starting moveTimer, to prevent lag. if that move has already happened, this will be false. if it needs to happen still, this boolean will be true.
+	private boolean initUp = false; //when up arrow is pressed, character moves up immediately one time without starting moveTimer, to prevent lag. if that move has already happened, this will be false. if it needs to happen still, this boolean will be true.
+	private boolean initRight = false; //when right arrow is pressed, character moves right immediately one time without starting moveTimer, to prevent lag. if that move has already happened, this will be false. if it needs to happen still, this boolean will be true.
+	private boolean initDown = false; //when down arrow is pressed, character moves down immediately one time without starting moveTimer, to prevent lag. if that move has already happened, this will be false. if it needs to happen still, this boolean will be true.
+	private static final int MOVE_TIMER_FREQUENCY = 100; //how often does the moveTimer tick? determines how quickly the character will move when holding down an arrow key
+	private int downSlow = 0; //this will be used so that the in the moveTimer, the move() method will only be called in the down direction every other timer tick. this is simply to make the downward movement slower. 
 	/*
 	 * how acceleration-due-to-gravity works:
 	 * ~   gravityStart = GRAVITY_INITIAL_SPEED;
@@ -81,7 +95,7 @@ public class SGame implements Observer {
 	 *     all of the above is still true, except now the values to change to adjust 
 	 *     gravity are the lower set of values, the "fastFallTimer stuff."
 	 *     the normal-speed fall is characterised by 120 millisecond increments.
-	 *     so when the player is on the ground and they jump up then land,
+	 *     so when the player is on the ground and they jump up then land right away,
 	 *     the way up is drawn in 120 millisecond increments, and so is the way down.
 	 *     the problem was that once the player started accelerating, the 120
 	 *     milllisecond increments weren't enough for the faster falling, so the player
@@ -108,13 +122,13 @@ public class SGame implements Observer {
 
 	//fastFallTimer stuff:
 	private static final int FAST_FALL_TIMER_FREQUENCY = 30; //frequency of the fastFallTimer, for faster fall speeds
-	private static final double FAST_GRAVITY_INITIAL_SPEED = 8; //real intitial speed is (int)(FAST_GRAVITY_INITIAL_SPEED / FAST_GRAVITY_DIVIDER)
+	private static final double FAST_GRAVITY_INITIAL_SPEED = 9; //real intitial speed is (int)(FAST_GRAVITY_INITIAL_SPEED / FAST_GRAVITY_DIVIDER)
 	private double fastGravityStart = FAST_GRAVITY_INITIAL_SPEED; //fastGravityStart will be incremented to increase fall speed over time
 	private static final double FAST_GRAVITY_DIVIDER = 6;  //real intitial speed is (int)(FAST_GRAVITY_INITIAL_SPEED / FAST_GRAVITY_DIVIDER)
 	private static final double FAST_GRAVITY_ACCELERATION = .2; //fastGravityStart increments by this much with every clock tick, speeding upfall over time
 	int accelCount = 1; //accelCount increments until it equals accelAt, at which point fast fall speed accelerates by FAST_GRAVITY_ACCELERATION
 	int accelAt = 1; //can be chan
-	
+
 	private static final int TERMINAL_VELOCITY = 8; //terminal velocity (in pixels-per-fastFallTimer-clock-tick)
 
 	/**
@@ -136,6 +150,7 @@ public class SGame implements Observer {
 		setCharX(sFile.getSpawnX());
 		setCharY(sFile.getSpawnY());
 
+		keyArray = new int[5];
 
 		/**
 		 * Timer listener is involved with the 'up' direction of moveChar.
@@ -357,6 +372,79 @@ public class SGame implements Observer {
 
 		checkFall();
 
+		/**
+		 * 
+		 * MoveTimerListener is the ActionListener for the moveTimer, which calls
+		 * the move(char direction) method, causing the character to move. 
+		 * Different combinations of keys being held down cause different movements.
+		 * Necessary movements will happen whenever the timer ticks, so increasing
+		 * the frequency of timer ticks will make the player move faster. 
+		 * 
+		 * @author Adam Cogen
+		 *
+		 */
+		class MoveTimerListener implements ActionListener{
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				boolean move1 = false; //did the first move happen?
+				boolean move2 = false; //did the second move happen?
+				
+				if(keyArray[0] == 1){ //left cases
+					if(keyArray[1] == 1){ //left and up
+						move1 = move('u');
+						move2 = move('l');
+						if((move1 && move2 && (checkClimb() == 1 || checkClimb() == 3))){ //if both moves didn't happen, no need to increment step
+							sChar.incStep();	
+						}
+					} else if (keyArray[3] == 1){ //left and down
+						move1 = move('d');
+						move2 = move('l');
+						if((move1 && move2 && (checkClimb() == 1 || checkClimb() == 2 || checkClimb() == 3))){
+							sChar.incStep();	
+						}
+					}  else { //left only 
+						move('l');
+					}
+				} else if (keyArray[2] == 1){ //right cases
+					if(keyArray[1] == 1){ //right and up
+						move1 = move('u');
+						move2 = move('r');
+						if((move1 && move2 && (checkClimb() == 1 || checkClimb() == 3))){
+							sChar.incStep();	
+						}
+					} else if (keyArray[3] == 1){ //right and down
+						move1 = move('d');
+						move2 = move('r');
+						if((move1 && move2 && (checkClimb() == 1 ||checkClimb() == 2 || checkClimb() == 3))){
+							sChar.incStep();	
+						}
+					} else { //right only
+						move('r');
+					}
+				} else if (keyArray[1] == 1){ //up only
+					move('u');
+				} else if (keyArray[3] == 1){ //down only
+					/*
+					 * every time a downward movement happens within moveTime, 
+					 * downSlow increments. the move() method for down will not actually
+					 *  be called unless downSlow equals 1, so downward movement only 
+					 *  happens every other timer tick. this is to make downward movement 
+					 *  slower. downSlow is reset to 0 at the same time that the move() 
+					 *  method for down is called (every other timer tick). 
+					 */
+					//System.out.println(downSlow);
+					//if(downSlow == 2){
+						move('d');
+						//downSlow = 0;
+					//}
+					//downSlow++; 
+				}
+				//moveExecuted = true;
+			}
+		}
+		moveTimer = new Timer(MOVE_TIMER_FREQUENCY, new MoveTimerListener());
+
 	}
 
 	/**
@@ -385,8 +473,9 @@ public class SGame implements Observer {
 	 * of the current location).
 	 * @param dir A character specifying the direction to move.
 	 * 'l' = left, 'r' = right, 'u' = up, 'd' = down.
+	 * @return true if the move happened, false otherwise
 	 */
-	public void move(char dir){
+	public boolean move(char dir){
 
 		boolean moved = false; //this will be used to make it so that the legs only move when the player actually moves
 
@@ -488,28 +577,131 @@ public class SGame implements Observer {
 			 */
 			checkFall();
 		}
+		return moved;
+	}
 
+	/**
+	 * Return the total number of arrow keys currently being held down
+	 */
+	public int keyArrayTotal(){
+		int total = 0;
+		for( int value : keyArray){
+			total += value;
+		}
+		return total;
 	}
 
 	/**
 	 * This observer is notified by the sGamePanel whenever an
-	 * arrow key is pressed. The move method is then called based
-	 * on which arrow key was pressed. 
+	 * arrow key is pressed or released. The moveTimer is then 
+	 * started or stopped based on which arrow key was pressed
+	 * or released.
+	 * Also note that after an arrow key is pressed, this method
+	 * will call the move(char direction) method itself (as 
+	 * opposed to leaving all calls to the moveTimer). This is
+	 * because otherwise the first movement will only happen
+	 * if it is held down long enough for a timer tick to happen.
+	 * The move() method is called once by this method for each
+	 * arrow key press. This resets every time that arrow key is
+	 * released. 
 	 */
 	@Override
 	public void update(Observable o, Object arg) {
+
 		if ((char) arg == 'l'){ //left arrow was pressed
-			move('l');
+			if(keyArray[2] == 0){ //right not being pressed
+				if(!initLeft){ //if the initial left movement hasn't happened, do it
+					move('l');
+					initLeft = true; //the initial left movement has now happened.
+				}
+				keyArray[0] = 1;
+				//moveExecuted = false;
+				if(moving == false){
+					moveTimer.start();
+					moving = true;
+				}
+			}
 		} else if ((char) arg == 'r'){ //right arrow was pressed
-			move('r');
+			if(keyArray[0] == 0){ //left not being pressed
+				if(!initRight){ //if the initial right movement hasn't happened, do it
+					move('r');
+					initRight = true; //the initial right movement has now happened.
+				}
+				keyArray[2] = 1;
+				//moveExecuted = false;
+				if(moving == false){
+					moveTimer.start();
+					moving = true;
+				}
+			}
 		} else if ((char) arg == 'u'){ //up arrow was pressed
-			move('u');
+			if(keyArray[3] == 0){ //down not being pressed
+				if(!initUp){ //if the initial up movement hasn't happened, do it
+					move('u');
+					initUp = true; //the initial up movement has now happened.
+				}
+				keyArray[1] = 1;
+				//moveExecuted = false;
+				if(moving == false){
+					moveTimer.start();
+					moving = true;
+				}
+			}
 		} else if ((char) arg == 'd'){ //down arrow was pressed
-			move('d');
+			if(keyArray[1] == 0){ //up not being pressed
+				if(!initDown){ //if the initial down movement hasn't happened, do it
+					move('d');
+					initDown = true; //the initial down movement has now happened.
+				}
+				keyArray[3] = 1;
+				//moveExecuted = false;
+				if(moving == false){
+					moveTimer.start();
+					moving = true;
+				}
+			}
 		} else if ((char) arg == 's'){ //shift key was pressed
-			//move('s'); //this can by implemented for various debug functions if needed
-		} else if ((char) arg == 'n'){ //key was released
+			move('s'); //this can by implemented for various debug functions if needed
+		} else if ((char) arg == 'n'){ //key was released, NOT CURRENTLY IMPLEMENTED
 			//no use for this yet
+		} else if ((char) arg == '0'){ //left arrow released
+			//if(moveExecuted == true){
+			keyArray[0] = 0;
+			initLeft = false; //the initial left movement is reset. next time left is pressed, the initial movement will happen.
+			if(keyArrayTotal() == 0){
+				moveTimer.stop();
+				moving = false;
+			}
+			//}
+		} else if ((char) arg == '1'){ //up arrow released
+			//if(moveExecuted == true){
+			keyArray[1] = 0;
+			initUp = false; //the initial up movement is reset. next time up is pressed, the initial movement will happen.
+			if(keyArrayTotal() == 0){
+				moveTimer.stop();
+				moving = false;
+			}
+			//}
+		} else if ((char) arg == '2'){ //right arrow released
+			//if(moveExecuted == true){
+			keyArray[2] = 0;
+			initRight = false; //the initial right movement is reset. next time right is pressed, the initial movement will happen.
+			if(keyArrayTotal() == 0){
+				moveTimer.stop();
+				moving = false;
+			}
+			//}
+		} else if ((char) arg == '3'){ //down arrow released
+			//if(moveExecuted == true){
+			keyArray[3] = 0;
+			initDown = false; //the initial down movement is reset. next time down is pressed, the initial movement will happen.
+			if(keyArrayTotal() == 0){
+				moveTimer.stop();
+				moving = false;
+			}
+			//}
+		} else if ((char) arg == '4'){ //shift key released, NOT CURRENTLY IMPLEMENTED
+
 		}
 	}
 	/**
@@ -749,9 +941,12 @@ public class SGame implements Observer {
 	 * @param warpNumber
 	 */
 	public void normWarp(int warpNumber){
-		changeMap(sMap.getNormWarpValue(warpNumber, 0));
-		setCharX(sMap.getNormWarpValue(warpNumber, 1));
-		setCharY(sMap.getNormWarpValue(warpNumber, 2));
+		int newMap = sMap.getNormWarpValue(warpNumber, 0);
+		int newX = sMap.getNormWarpValue(warpNumber, 1);
+		int newY = sMap.getNormWarpValue(warpNumber, 2);
+		changeMap(newMap);
+		setCharX(newX);
+		setCharY(newY);
 		if(normWarpResetsGravity){
 			resetGravity();
 		}
@@ -856,7 +1051,7 @@ public class SGame implements Observer {
 	//		}
 	//		return position;
 	//	}
-	
+
 	/**
 	 * Instantiate the SGame class.
 	 * @param args: int indicating which map number to start the game on (this parameter is not currently implented)
@@ -864,6 +1059,6 @@ public class SGame implements Observer {
 	public static void main(String [] args){
 		SGame game = new SGame(12);
 	}
-	
+
 }
 

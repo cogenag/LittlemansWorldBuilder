@@ -12,6 +12,7 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -28,7 +29,8 @@ import java.applet.*;
 
 /**
  * this is the map maker class for littleman's world builder, including map files, automatic collision detection, automatic edge warp settings, etc.
- * designed to be used with the game class.
+ * designed to be used with the game class. this class is mostly GUI based so it is long. 
+ * 
  * changelog:
  * 1.1: in-map-warps and necessary editing capabilities
  * 1.2: improved spawn-point marker, improved cursor calibration, 
@@ -38,8 +40,15 @@ import java.applet.*;
  *		corner to bottom left, and from bottom left corner
  *		to top right (whereas before they could only be added
  *		from top left to bottom right).
+ * 1.3:	improved key shortcut sensing (+, -, delete keys
+ *		now work while in edit menu), improved normWarp 
+ *		file format ('n' now specifies destination is
+ *		same as current map), set map number menu now
+ *		automatically sets default number to lowest
+ *		unused map number in "maps/" file directory
+ *
  * @author Adam Cogen
- * @version Version 1.21, Friday, March 31, 2017
+ * @version Version 1.3, Tuesday, April 11, 2017
  */
 public class SMapMaker extends JFrame{
 	private static int GAME_WIDTH = 430; //the width of the map
@@ -201,33 +210,33 @@ public class SMapMaker extends JFrame{
 	private JTextField loadInput; //the textbox for entering the map number to load within the load menu
 	private JButton loadMap; //the button to load the map number specified within the loadInput text field in the load menu
 	private boolean loading; //is the game currently being loaded? if it is, the main map panel is not rendered until loading is complete. this is to prevent rendering an incomplete map / shape array
-	private JLabel editColorLabel; 
-	private JLabel editRedLabel;
-	private JLabel editGreenLabel;
-	private JLabel editBlueLabel;
-	private JTextField editRedField;
-	private JTextField editGreenField;
-	private JTextField editBlueField;
-	private JButton editColorButton;
+	private JLabel editColorLabel; //label on the edit menu edit color section that says "Color:"
+	private JLabel editRedLabel; //label on the edit menu edit color section that says "Red:"
+	private JLabel editGreenLabel; //label on the edit menu edit color section that says "Green:"
+	private JLabel editBlueLabel; //label on the edit menu edit color section that says "Blue:"
+	private JTextField editRedField; //textbox on the edit menu edit color section that contains the red value
+	private JTextField editGreenField; //textbox on the edit menu edit color section that contains the green value
+	private JTextField editBlueField; //textbox on the edit menu edit color section that contains the blue value
+	private JButton editColorButton; //button on the edit menu edit color section that applies any changes made to color values. says "Set Color"
 	private int editRedVal; //the value in "red" textbox the of the "set color" portion of the edit menu
 	private int editGreenVal; //the value in "green" textbox the of the "set color" portion of the edit menu
 	private int editBlueVal; //the value in "blue" textbox the of the "set color" portion of the edit menu
 	private JMenuItem newMap; //file --> new map menu item
-	private JLabel editCollisLabel;
-	private JRadioButton editSetCollisZero;
-	private JRadioButton editSetCollisOne;
-	private JLabel editClimbableLabel;
-	private JCheckBox editCollisClimbable;
-	private JLabel editWaterLabel;
-	private JCheckBox editCollisWater;
+	private JLabel editCollisLabel; //label on the edit menu edit collision section that says "Collision:"
+	private JRadioButton editSetCollisZero; //radiobutton on the edit menu edit collision section that says "Off", sets collision to off on current shape
+	private JRadioButton editSetCollisOne; //radiobutton on the edit menu edit collision section that says "On", sets collision to on on current shape
+	private JLabel editClimbableLabel; //label on the edit menu edit collision/climbability section that says "Climbable:"
+	private JCheckBox editCollisClimbable; //check box on the edit menu edit collision/climbability section next to "Climbable:" label, determines whether selected shape is climbable or not
+	private JLabel editWaterLabel; //label on the edit menu edit collision/climbability section that says "Watery:"
+	private JCheckBox editCollisWater; //check box on the edit menu edit collision/climbability section next to "Watery:" label, determines whether selected shape is climb-type watery or not
 	private JLabel climbableTypeLabel; //label for the type of climbability (jump vs ladder)
 	private JLabel editClimbableTypeLabel; //edit menu label for the type of climbability (jump vs ladder)
 	private JRadioButton editClimbableJump; //edit menu button to change climbability type to jump (instead of ladder)
 	private JRadioButton editClimbableLadder; //edit menu button to change climbability type to ladder (instead of jump)
-	private JLabel editBlockLayer; 
-	private JRadioButton editLayerFront;
-	private JRadioButton editLayerBack;
-	private JButton editChangeCollis;
+	private JLabel editBlockLayer; //label on the edit menu edit block layering section that says "Block Layering:"
+	private JRadioButton editLayerFront; //radiobutton on the edit menu edit block layering that says "In Front Of Sprite" and sets block layering to in front of player
+	private JRadioButton editLayerBack; //radiobutton on the edit menu edit block layering that says "Behind Sprite" and sets block layering to behind player
+	private JButton editChangeCollis; //button on the edit menu edit collision section that says "Set Attributes", applies any changes made to current shape's collision, climbability, block layering, etc
 	private int tempClimbable; //a temporary climbability value, used to maintain the correct status of different buttons in the edit window when climbability changes haven't yet been applied, e.g. deactivate the water setting if climbability is off, even if the change hasn't been applied
 	private int tempCollisVal; //a temporary collision value, used to maintain the correct status of different buttons in the edit window when collision changes haven't yet been applied, e.g. deactivate the water setting if climbability is off, even if the change hasn't been applied
 	private boolean editHideColor; //when there is nothing selected in edit mode, the edit window color preview box should be greyed out. this is used in an if statement to change the color of the edit window color preview box depending on whether a shape is selected or not.
@@ -262,11 +271,11 @@ public class SMapMaker extends JFrame{
 
 
 	/**
-	 * make a new map maker window and initialize all necessary fields
+	 * make a new map maker window and initialize all necessary fields.
 	 */
 	public SMapMaker(){
 
-		map = 0;
+		map = checkMinMap();
 		loading = false;
 		selectionMade = false;
 		warpList = new ArrayList();
@@ -1054,9 +1063,9 @@ public class SMapMaker extends JFrame{
 				int newWidth = Integer.parseInt(editMenuX2Input.getText()) - newX1 + 15;
 				int newHeight = Integer.parseInt(editMenuY2Input.getText()) - newY1 + 15;
 				int index = (editMenuCountVal - 1) * 9;
-							
+
 				//adjust any shape values as necessary based on which new corner is which
-				
+
 				/*
 				 *  newRect width < 0, newRect height > 0: bottom left
 				 * x = x - width 
@@ -1101,8 +1110,8 @@ public class SMapMaker extends JFrame{
 					 * This is the default case, no changes need to be made to any values before drawing shape
 					 */ 
 				}
-				
-				
+
+
 				rectList.set(index, newX1);
 				rectList.set(index + 1, newY1);
 				rectList.set(index + 2, newWidth);
@@ -1157,13 +1166,15 @@ public class SMapMaker extends JFrame{
 
 		/**
 		 * 
-		 * KeyListener to check for clicks to the delete button, 
-		 * which deletes the selected shape in edit mode
+		 * KeyListener to check for clicks to the delete key, 
+		 * which deletes the selected shape in edit mode,
+		 * and plus and minus keys, which increment the 
+		 * currently selected shape number
 		 * 
 		 * @author adamcogen
 		 *
 		 */
-		class DeleteKey implements KeyListener{
+		class KeyShortcuts implements KeyListener{
 
 			@Override
 			public void keyTyped(KeyEvent e) {
@@ -1177,6 +1188,14 @@ public class SMapMaker extends JFrame{
 					//System.out.println("ya");
 					editMenuDeleteShape.doClick();
 				}
+				if (e.getKeyCode() == KeyEvent.VK_EQUALS || e.getKeyCode() == KeyEvent.VK_PLUS){
+					//System.out.println("ya");
+					editMenuCountPlus.doClick();
+				}
+				if (e.getKeyCode() == KeyEvent.VK_MINUS || e.getKeyCode() == KeyEvent.VK_UNDERSCORE){
+					//System.out.println("ya");
+					editMenuCountMinus.doClick();
+				}
 
 			}
 
@@ -1187,7 +1206,15 @@ public class SMapMaker extends JFrame{
 			}
 
 		}
-		this.addKeyListener(new DeleteKey());
+		this.addKeyListener(new KeyShortcuts());
+		/*
+		 * Add KeyShortcuts KeyListener to every component in the editMenuFrame,
+		 * for convenience
+		 */
+		editMenuFrame.addKeyListener(new KeyShortcuts());
+		for(Component index : getAllComponents(editMenuFrame)){
+			index.addKeyListener(new KeyShortcuts());
+		}
 
 		/**
 		 * this action listener is for the "set" button at the bottom 
@@ -1808,7 +1835,7 @@ public class SMapMaker extends JFrame{
 					blueVal = 0;
 					blueField.setText("0");
 				}
-				
+
 				if (redVal > 255){
 					redVal = 255;
 					redField.setText("255");
@@ -1833,7 +1860,7 @@ public class SMapMaker extends JFrame{
 					greenVal = 0;
 					greenField.setText("0");
 				}
-				
+
 				toolBoxPanel.repaint();
 			}
 		}
@@ -2493,11 +2520,11 @@ public class SMapMaker extends JFrame{
 
 				//draw shapes?
 				for(int i = 0; rectCount > 0 && i < rectCount; i++){
-					
+
 					int tempRedVal = (int) rectList.get(i* (9) + 6);
 					int tempGreenVal = (int) rectList.get(i* (9) + 7);
 					int tempBlueVal = (int) rectList.get(i* (9) + 8);
-					
+
 					if (tempRedVal > 255 || tempRedVal < 0){
 						tempRedVal = fixColorRange(tempRedVal);	
 					}
@@ -2507,7 +2534,7 @@ public class SMapMaker extends JFrame{
 					if (tempGreenVal > 255 || tempGreenVal < 0){
 						tempGreenVal = fixColorRange(tempGreenVal);
 					}
-					
+
 					g.setColor(new Color(tempRedVal, tempGreenVal, tempBlueVal));
 
 					if((int) rectList.get(((i) * 9) + 4) == 0 || (int) rectList.get(((i) * 9) + 4) == 1 || (int) rectList.get(((i) * 9) + 4) == 2 || (int) rectList.get(((i) * 9) + 4) == 5){
@@ -2528,7 +2555,7 @@ public class SMapMaker extends JFrame{
 					int tempHeight = mouseY - newRectY;
 					int tempX = newRectX;
 					int tempY = newRectY;
-					
+
 					//adjust any shape values as necessary based on mouse position and first click position
 					/*
 					 *  newRect width < 0, newRect height > 0: bottom left
@@ -2799,6 +2826,8 @@ public class SMapMaker extends JFrame{
 		edgeWarpRightCheck.setSelected(false);
 		edgeWarpUpCheck.setSelected(false);
 		edgeWarpDownCheck.setSelected(false);
+		map = checkMinMap();
+		mapNumInput.setText("" + map);
 		adjustEditMenu();
 		panel.repaint();
 	}
@@ -2913,7 +2942,11 @@ public class SMapMaker extends JFrame{
 			warpCount = scan1.nextInt();
 			for (int i = 0; i < (warpCount); i++){
 				for(int j = 0; j < 3; j++){
-					warpList.add(scan1.nextInt());
+					String tempWarpMapNum = scan1.next();
+					if(tempWarpMapNum.equals("n")){
+						tempWarpMapNum = "" + map;
+					}
+					warpList.add(Integer.parseInt(tempWarpMapNum));
 				}
 			}
 			//System.out.println(warpList);
@@ -2955,8 +2988,15 @@ public class SMapMaker extends JFrame{
 			//write a line with the warp count
 			writer.println(warpCount);
 			//this loop goes thru and writes a line for each warp, containing the target map num, the target x coord, and the target y coord
+			//if the destination map number is the same as the current map number, then 'n' is written to the file (so that changing file name wont ruin the warp)
+			String tempWarpMapNum;
 			for(int i = 0; warpCount > 0 && i < warpCount; i++){
-				writer.println((int) warpList.get(i * 3) + " " + (int) (warpList.get((i * 3) + 1)) + " " + (int) (warpList.get((i * 3) + 2)));
+				if((int) warpList.get(i * 3) == map){
+					tempWarpMapNum = "n";
+				} else {
+					tempWarpMapNum = "" + (int) warpList.get(i * 3);
+				}
+				writer.println(tempWarpMapNum + " " + (int) (warpList.get((i * 3) + 1)) + " " + (int) (warpList.get((i * 3) + 2)));
 			}
 
 			//everything below here does not affect the map, it is just comments to help people reading the file from a text editor
@@ -2969,7 +3009,7 @@ public class SMapMaker extends JFrame{
 			writer.println("numberOfShapesToReadFromTheFile");
 			writer.println("topLeftCornerX topLeftCornerY width height collision climbability r g b //each of these lines represents one shape");
 			writer.println("warpCount");
-			writer.println("warpToMapNum warpToXCoord warpToYCoord");
+			writer.println("warpToMapNum warpToXCoord warpToYCoord //n means warp destination is the same as current map");
 			writer.println();
 			writer.println("//collision can be: 0 (no collision, draw behind char), 1 (collision), 2 (no collision, draw in front of char), 3 (no collision oval, draw behind char), 4 (no collision oval, draw in front of char), or 5 (warp. is not drawn, but will teleport the player).");
 			writer.println("//climbable can be: 0 (can't climb), 1 (can ladder climb, no gravity applies), 2 (can climb, slow gravity applies), or 3 (can jump climb, no gravity applies). anything greater than or eqaul to 10 is to keep track of which warp is assigned to which warp recangle (10 = warp 0, 11 = warp 1, etc.).");
@@ -3225,7 +3265,7 @@ public class SMapMaker extends JFrame{
 		editMenuPanel.repaint();
 
 	}
-	
+
 	/**
 	 * Correct any values that are not within the range 0 to 255, inclusive.
 	 * Values less than 0 will become 0, values greater than 255 will become 255.
@@ -3261,6 +3301,72 @@ public class SMapMaker extends JFrame{
 			}
 
 		}
+	}
+
+	/**
+	 * Return the minimum unused map number (file name) in the maps directory
+	 * used to automatically set the map number to a value that won't cause 
+	 * user to accidentally overwrite existing files
+	 */
+	public int checkMinMap(){
+		File mapDirectory = new File("maps/");
+		File[] allFileNames = mapDirectory.listFiles();
+
+		int index = 0;
+		String tempName = "0";
+		int val = -1;
+		int max = -1;
+
+		while(allFileNames.length > 0 && index < allFileNames.length){
+			tempName = (allFileNames[index].getName());
+			tempName = tempName.substring(0, tempName.length() - 4);
+			val = Integer.parseInt(tempName);
+			if(val > max){
+				max = val;
+			}
+			index++;
+		}
+		//System.out.println(max);
+		if(max > -1){
+			int[] freq = new int[max + 1];
+			index = 0;
+			while(allFileNames.length > 0 && index < allFileNames.length){
+				tempName = (allFileNames[index].getName());
+				tempName = tempName.substring(0, tempName.length() - 4);
+				val = Integer.parseInt(tempName);
+				freq[val]++;
+				index++;
+			}
+			index = 0;
+			while(freq[index] > 0){
+				index++;
+			}
+		} else {
+			index = 0;
+		}
+
+
+		return index;
+	}
+
+	/**
+	 * Recursively create an ArrayList of all Components in the specified container
+	 * Used to add KeyListeners to every non-textbox component in a particular 
+	 * JFrame (the edit menu, for example).
+	 * @param container The container to add all components from
+	 * @return The list of all components
+	 */
+	public ArrayList<Component> getAllComponents(Container container) {
+		Component[] components = container.getComponents();
+		ArrayList<Component> componentList = new ArrayList<Component>();
+		for (Component current : components) {
+			if(!(current instanceof JTextField)){
+				componentList.add(current);
+				if (current instanceof Container)
+					componentList.addAll(getAllComponents((Container) current));
+			}
+		}
+		return componentList;
 	}
 
 	/**

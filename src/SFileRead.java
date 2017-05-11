@@ -75,7 +75,13 @@ public class SFileRead {
 			warpList = new int[warpCount][3];
 			for (int i = 0; i < warpCount; i++){
 				for (int j = 0; j < 3; j++){
-					warpList[i][j] = scan1.nextInt();
+					String value = scan1.next();
+					if(value.equals("n")){
+						warpList[i][j] = map;
+					} else{
+						warpList[i][j] = Integer.parseInt(value);
+						//System.out.println(value);
+					}
 				}
 			}
 

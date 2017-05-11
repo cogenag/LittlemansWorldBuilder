@@ -1,43 +1,22 @@
-430 210
-34 36
-n n n n
-21
--8 -11 445 228 0 0 255 255 255
--4 66 130 11 1 0 51 204 255
-14 31 12 40 1 1 51 204 255
-57 31 11 40 1 1 51 204 255
-103 32 10 39 1 1 51 204 255
-89 107 167 13 1 0 51 204 255
-170 76 9 35 1 2 51 204 255
-235 75 32 13 1 1 51 204 255
-271 124 50 10 1 2 51 204 255
--6 190 440 13 1 0 51 204 255
-70 160 17 32 5 10 51 204 255
-234 179 21 15 5 10 51 204 255
-303 154 41 15 5 10 51 204 255
-238 178 13 14 0 0 255 153 153
-300 155 56 12 0 0 255 153 153
-325 182 21 14 1 0 51 204 255
-70 160 17 31 0 0 255 153 153
-233 177 23 15 0 0 255 153 153
-169 132 3 30 5 13 51 204 255
-167 133 7 28 0 0 255 153 153
-14 30 12 6 1 0 255 153 153
-4
-3 155 162
-3 155 162
-3 155 162
-3 78 16
+200 200
+94 110
+n n 3 2
+3
+-13 -12 225 223 0 2 255 255 204
+14 58 76 70 3 0 255 153 153
+155 8 38 58 3 0 204 255 204
+0
 
 //file format:
 
 mapWidth mapHeight
 spawnPointX spawnPointY
-numberOfRectanglesToReadFromTheFile
-topLeftCornerX topLeftCornerY width height collision climbable r g b //each of these lines represents one rectangle
+edgeWarpLeftMap edgeWarpRightMap edgeWarpUpMap edgeWarpDownMap //n means none, player just warps to opposite side of current map
+numberOfShapesToReadFromTheFile
+topLeftCornerX topLeftCornerY width height collision climbability r g b //each of these lines represents one shape
 warpCount
-warpToMapNum warpToXCoord warpToYCoord
+warpToMapNum warpToXCoord warpToYCoord //n means warp destination is the same as current map
 
 //collision can be: 0 (no collision, draw behind char), 1 (collision), 2 (no collision, draw in front of char), 3 (no collision oval, draw behind char), 4 (no collision oval, draw in front of char), or 5 (warp. is not drawn, but will teleport the player).
-//climbable can be: 0 (can't climb), 1 (can climb, no gravity applies), or 2 (can climb, slow gravity applies). anything greater than or eqaul to 10 is to keep track of which warp is assigned to which warp recangle (10 = warp 0, 11 = warp 1, etc.).
+//climbable can be: 0 (can't climb), 1 (can ladder climb, no gravity applies), 2 (can climb, slow gravity applies), or 3 (can jump climb, no gravity applies). anything greater than or eqaul to 10 is to keep track of which warp is assigned to which warp recangle (10 = warp 0, 11 = warp 1, etc.).
 
