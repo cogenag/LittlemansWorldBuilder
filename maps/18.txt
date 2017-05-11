@@ -1,0 +1,43 @@
+430 210
+94 110
+n n n n
+24
+-7 -6 445 223 0 0 255 255 255
+227 190 23 11 0 0 153 255 0
+-7 120 227 95 1 0 255 204 102
+253 119 186 96 1 0 255 204 102
+40 59 35 75 1 0 255 204 102
+47 70 20 8 0 0 0 51 255
+60 76 7 20 0 0 0 51 255
+45 92 21 5 0 0 0 51 255
+44 92 7 11 0 0 0 51 255
+48 99 22 4 0 0 0 51 255
+180 139 24 4 0 0 0 51 255
+195 140 10 40 0 0 0 51 255
+180 138 6 12 0 0 0 51 255
+177 174 41 7 0 0 0 51 255
+274 135 44 9 0 0 0 51 255
+309 142 9 29 0 0 0 51 255
+274 139 10 29 0 0 0 51 255
+273 162 45 10 0 0 0 51 255
+242 182 16 34 1 0 255 204 102
+216 182 16 31 1 0 255 204 102
+220 199 42 18 1 0 255 204 102
+224 196 29 9 5 10 255 0 51
+164 83 37 14 1 0 255 204 102
+118 104 26 5 1 0 255 255 51
+1
+2 177 53
+
+//file format:
+
+mapWidth mapHeight
+spawnPointX spawnPointY
+numberOfRectanglesToReadFromTheFile
+topLeftCornerX topLeftCornerY width height collision climbable r g b //each of these lines represents one rectangle
+warpCount
+warpToMapNum warpToXCoord warpToYCoord
+
+//collision can be: 0 (no collision, draw behind char), 1 (collision), 2 (no collision, draw in front of char), 3 (no collision oval, draw behind char), 4 (no collision oval, draw in front of char), or 5 (warp. is not drawn, but will teleport the player).
+//climbable can be: 0 (can't climb), 1 (can climb, no gravity applies), or 2 (can climb, slow gravity applies). anything greater than or eqaul to 10 is to keep track of which warp is assigned to which warp recangle (10 = warp 0, 11 = warp 1, etc.).
+
