@@ -133,7 +133,28 @@ public class SGamePanel extends JFrame {
 			 */
 			@Override
 			public void keyReleased(KeyEvent e) {
-				pressNotifier.keyPressChange('n');
+				switch (e.getKeyCode()) {
+				case KeyEvent.VK_LEFT: //left key pressed
+					//moveChar("left");
+					pressNotifier.keyPressChange('0');
+					break;
+				case KeyEvent.VK_UP: //up key pressed
+					//moveChar("up");
+					pressNotifier.keyPressChange('1');
+					break;
+				case KeyEvent.VK_RIGHT: //right key pressed
+					//moveChar("right");
+					pressNotifier.keyPressChange('2');
+					break;
+				case KeyEvent.VK_DOWN: // down key pressed
+					//moveChar("down");
+					pressNotifier.keyPressChange('3');
+					break;
+				case KeyEvent.VK_SHIFT: // shift key pressed
+					//moveChar("shift");
+					pressNotifier.keyPressChange('4');
+					break;
+				}
 			}
 		}
 		this.addKeyListener(new KeyPress());
@@ -384,9 +405,9 @@ public class SGamePanel extends JFrame {
 		}
 		
 		/**
-		 * This is the method that is called when a key press happens within the SGamePanel.
+		 * This is the method that is called when a key press or release happens within the SGamePanel.
 		 * This is where observers of the KeyPressNotifier are notified. This method passes
-		 * information about which key was pressed as a parameter to the observer (the SGame
+		 * information about which key was pressed or released as a parameter to the observer (the SGame
 		 * class), where it can be processed.
 		 * @param char: the direction that was pressed within the SGamePanel. 
 		 */
@@ -401,8 +422,18 @@ public class SGamePanel extends JFrame {
 				currentDirection = 'd';
 			} else if (dir == 's'){ //shift key pressed
 				currentDirection = 's';
-			} else if (dir == 'n'){ //no key pressed, or key released 
+			} else if (dir == 'n'){ //no key pressed, or key released (NOT CURRENTLY IMPLEMENTED)
 				currentDirection = 'n';
+			} else if (dir == '0'){ //left arrow released
+				currentDirection = '0';
+			} else if (dir == '1'){ //up arrow released
+				currentDirection = '1';
+			} else if (dir == '2'){ //right arrow released 
+				currentDirection = '2';
+			} else if (dir == '3'){ //down arrow released
+				currentDirection = '3';
+			} else if (dir == '4'){ //shift key released
+				currentDirection = '4';
 			}
 			setChanged();
 			notifyObservers(currentDirection);

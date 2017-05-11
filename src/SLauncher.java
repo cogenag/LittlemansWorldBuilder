@@ -17,6 +17,7 @@ public class SLauncher extends JFrame {
 	private LPanel launchPanel;
 	private JButton playButton;
 	private JButton quitButton;
+	private JTextField mapNumberTextBox;
 	
 	/**
 	 * Unfinished constructor
@@ -27,6 +28,7 @@ public class SLauncher extends JFrame {
 		launchPanel = new LPanel();
 		playButton = new JButton("Play");
 		quitButton = new JButton("Quit");
+		mapNumberTextBox = new JTextField();
 		launchPanel.add(playButton);
 		launchPanel.add(quitButton);
 		this.add(launchPanel);
